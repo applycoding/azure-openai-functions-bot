@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run unit tests
+        run: pytest
+
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bicep CLI
+        run: |
+          curl -fsSL -o bicep "https://github.com/Azure/bicep/releases/download/v0.48.1/bicep-linux-x64"
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+      - name: Lint and build templates
+        run: |
+          bicep lint infra/main.bicep
+          bicep build infra/main.bicep --outfile "${RUNNER_TEMP}/main.json"
+          bicep build-params infra/main.example.bicepparam --outfile "${RUNNER_TEMP}/main.parameters.json"
